@@ -41,6 +41,7 @@ body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh
 .date-nav{display:flex;align-items:center;justify-content:center;padding:8px 16px 4px;flex-shrink:0;gap:8px}
 .date-nav-btn{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%}
 .date-nav-btn:active{background:#2C2C2E}
+.date-nav-btn:disabled{opacity:0.25;pointer-events:none;cursor:default}
 .date-nav-label{font-size:15px;font-weight:500;color:#fff;flex:1;text-align:center}
 
 /* Zeit/Kalorien sub-tabs */
@@ -54,25 +55,25 @@ body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh
 .chart-container{height:220px;position:relative}
 
 /* Stats grid */
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;padding:16px;gap:0;border-top:1px solid #2C2C2E;flex-shrink:0}
-.stat-item{padding:10px 8px}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid #3A3A3C;flex-shrink:0}
+.stat-item{padding:14px 16px 12px}
 .stat-value{font-size:28px;font-weight:700;color:#fff;line-height:1.1}
 .stat-value.medium{font-size:22px}
 .stat-label{font-size:12px;color:#8E8E93;margin-top:3px}
-.stats-grid .stat-item:nth-child(1),.stats-grid .stat-item:nth-child(3){border-right:1px solid #2C2C2E}
-.stats-grid .stat-item:nth-child(1),.stats-grid .stat-item:nth-child(2){border-bottom:1px solid #2C2C2E}
+.stats-grid .stat-item:nth-child(odd){border-right:1px solid #3A3A3C}
+.stats-grid .stat-item:nth-child(1),.stats-grid .stat-item:nth-child(2){border-bottom:1px solid #3A3A3C}
 
 /* Records row */
-.records-row{padding:16px;border-top:1px solid #2C2C2E;border-bottom:1px solid #2C2C2E;flex-shrink:0}
+.records-row{background:#1C1C1E;border-radius:12px;margin:8px 16px 0;padding:14px 16px;flex-shrink:0;border:none}
 .records-row button{background:none;border:none;color:#fff;font-size:15px;font-weight:500;cursor:pointer;width:100%;text-align:left;padding:0;display:flex;justify-content:space-between;align-items:center}
 .records-row button::after{content:'›';font-size:20px;color:#8E8E93}
 
 /* Monthly list */
-.section-header{padding:12px 16px 6px;flex-shrink:0}
-.section-label{font-size:11px;font-weight:500;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase}
-.month-list{flex:1}
-.month-row{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #1C1C1E;cursor:pointer;background:#000}
-.month-row:active{background:#1C1C1E}
+.section-header{padding:16px 16px 4px;background:#000;flex-shrink:0}
+.section-label{font-size:11px;font-weight:400;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase}
+.month-list{flex:1;padding-bottom:16px}
+.month-row{display:flex;justify-content:space-between;align-items:center;background:#1C1C1E;border-radius:12px;margin:8px 16px 0;padding:14px 16px;cursor:pointer;border-bottom:none}
+.month-row:active{background:#2C2C2E}
 .month-row-name{font-size:16px;color:#fff}
 .month-row-value{font-size:16px;color:#fff;font-weight:500}
 
@@ -135,6 +136,11 @@ body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh
 
 /* Scrollable content area */
 .scroll-content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+
+/* Hide simulated status bar on real touch devices */
+@media (pointer: coarse) {
+  .status-bar { display: none; }
+}
 </style>
 </head>
 <body>
@@ -313,7 +319,7 @@ body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh
         </div>
       </div>
 
-      <div class="date-nav">
+      <div class="date-nav" id="studio-date-nav">
         <button class="date-nav-btn" onclick="navigateStudioYear(-1)">‹</button>
         <span class="date-nav-label" id="studio-date-label">Jan. 2026 – Dez. 2026</span>
         <button class="date-nav-btn" onclick="navigateStudioYear(1)">›</button>
@@ -563,6 +569,57 @@ function loadData() {
 }
 function saveData(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+  // Defer plausibility check until after DOM has updated
+  setTimeout(validateStats, 50);
+}
+
+function validateStats() {
+  const today = new Date(); today.setHours(23,59,59,999);
+  const errors = [];
+
+  // 1. Keine zukünftigen Schritte-Einträge, keine ungültigen Werte
+  for (const [dk, v] of Object.entries(DATA.steps)) {
+    if (new Date(dk) > today) errors.push('Zukunfts-Datum in Schritte: ' + dk);
+    if (typeof v !== 'number' || v < 0 || !isFinite(v)) errors.push('Ungültiger Schrittwert: ' + dk + '=' + v);
+  }
+
+  // 2. Keine zukünftigen Gym-Einträge, keine ungültigen Dauern
+  for (const [dk, sessions] of Object.entries(DATA.gym)) {
+    if (new Date(dk) > today) errors.push('Zukunfts-Datum in Gym: ' + dk);
+    for (const s of sessions) {
+      const secs = parseDuration(s.duration);
+      if (isNaN(secs) || secs <= 0 || secs > 86400) errors.push('Ungültige Dauer: ' + dk + ' ' + s.duration);
+    }
+  }
+
+  // 3. Angezeigter Gesamtwert muss mit Summe der Tageseinträge übereinstimmen
+  const yr = state.schritteYear;
+  const months = [[yr-1,12],[yr,1],[yr,2],[yr,3],[yr,4],[yr,5],[yr,6],[yr,7],[yr,8],[yr,9],[yr,10],[yr,11]];
+  let recalcSteps = 0;
+  for (const [y, m] of months) {
+    for (let d = 1; d <= daysInMonth(y, m); d++) {
+      if (new Date(y, m-1, d) > today) continue;
+      recalcSteps += DATA.steps[dateStr(y, m, d)] || 0;
+    }
+  }
+  const displayedEl = document.getElementById('stat-gesamt-schritte');
+  if (displayedEl) {
+    const displayed = parseInt(displayedEl.textContent.replace(/\./g, ''), 10);
+    if (!isNaN(displayed) && Math.abs(displayed - recalcSteps) > 1) {
+      errors.push('Gesamtschritte-Mismatch: angezeigt=' + displayed + ', berechnet=' + recalcSteps);
+    }
+  }
+
+  if (errors.length > 0) {
+    console.warn('[Plausibilitäts-Check]', errors);
+    // Neuberechnung erzwingen
+    const activeView = document.querySelector('.view.active');
+    if (activeView) {
+      if (activeView.id === 'view-schritte') renderSchritte();
+      else if (activeView.id === 'view-studio') renderStudio();
+    }
+  }
+  return { valid: errors.length === 0, errors };
 }
 
 let DATA = loadData();
@@ -571,10 +628,10 @@ let DATA = loadData();
 const state = {
   schritteTab: '1J',
   schritteToggle: 'monat',
-  schritteYear: 2026, // end year of 12-month window (Dez prev-1 to Nov schritteYear)
-  schritteDetailMonth: null, // "2026-01"
+  schritteYear: new Date().getFullYear(),
+  schritteDetailMonth: null,
   studioTab: '1J',
-  studioYear: 2026,
+  studioYear: new Date().getFullYear(),
   studioDetailMonth: null,
   schritteModalEditDate: null,
   studioModalEditSessionId: null,
@@ -608,7 +665,7 @@ function buildSchritteChart1J() {
   const ctx = document.getElementById('schritte-chart').getContext('2d');
   schritteChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ data: values, backgroundColor: '#30D158', borderRadius: 4, borderSkipped: false }] },
+    data: { labels, datasets: [{ data: values, backgroundColor: '#30D158', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
     options: {
       ...CHART_DEFAULTS,
       plugins: {
@@ -636,7 +693,7 @@ function buildSchritteChart7Ta() {
   const ctx = document.getElementById('schritte-chart').getContext('2d');
   schritteChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ data: values, backgroundColor: '#30D158', borderRadius: 4, borderSkipped: false }] },
+    data: { labels, datasets: [{ data: values, backgroundColor: '#30D158', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
     options: { ...CHART_DEFAULTS, plugins: { ...CHART_DEFAULTS.plugins, tooltip: { callbacks: { label: ctx => fmtNum(ctx.parsed.y) + ' Schritte' } } } }
   });
 }
@@ -657,7 +714,7 @@ function buildSchritteChart4Wo() {
   const ctx = document.getElementById('schritte-chart').getContext('2d');
   schritteChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels: weeks.map(w => w.label), datasets: [{ data: weeks.map(w => w.total), backgroundColor: '#30D158', borderRadius: 4, borderSkipped: false }] },
+    data: { labels: weeks.map(w => w.label), datasets: [{ data: weeks.map(w => w.total), backgroundColor: '#30D158', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
     options: { ...CHART_DEFAULTS }
   });
 }
@@ -681,7 +738,7 @@ function buildStudioChart1J() {
   const ctx = document.getElementById('studio-chart').getContext('2d');
   studioChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ data: values, backgroundColor: '#5B9BD5', borderRadius: 4, borderSkipped: false }] },
+    data: { labels, datasets: [{ data: values, backgroundColor: '#5B9BD5', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
     options: {
       ...CHART_DEFAULTS,
       plugins: {
@@ -713,7 +770,7 @@ function buildStudioChart7Ta() {
   const ctx = document.getElementById('studio-chart').getContext('2d');
   studioChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ data: values, backgroundColor: '#5B9BD5', borderRadius: 4, borderSkipped: false }] },
+    data: { labels, datasets: [{ data: values, backgroundColor: '#5B9BD5', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
     options: { ...CHART_DEFAULTS, plugins: { ...CHART_DEFAULTS.plugins, tooltip: { callbacks: { label: ctx => fmtSec(Math.round(ctx.parsed.y * 3600)) } } } }
   });
 }
@@ -735,7 +792,7 @@ function buildStudioChart4Wo() {
   const ctx = document.getElementById('studio-chart').getContext('2d');
   studioChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels: weeks.map(w => w.label), datasets: [{ data: weeks.map(w => w.total/3600), backgroundColor: '#5B9BD5', borderRadius: 4, borderSkipped: false }] },
+    data: { labels: weeks.map(w => w.label), datasets: [{ data: weeks.map(w => w.total/3600), backgroundColor: '#5B9BD5', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
     options: { ...CHART_DEFAULTS }
   });
 }
@@ -821,6 +878,7 @@ function importData(event) {
         saveData(DATA);
         alert('Daten erfolgreich importiert!');
         renderHome();
+        setTimeout(validateStats, 150);
       } else { alert('Ungültige Datei.'); }
     } catch { alert('Fehler beim Einlesen der Datei.'); }
   };
@@ -861,10 +919,14 @@ function renderSchritte() {
   document.getElementById('schritte-stats').style.display = '';
 
   // Date label
+  const currentYear = new Date().getFullYear();
   let dateLabel = '';
   if (tab === '1J') {
     dateLabel = `Dez. ${yr-1} – Nov. ${yr}`;
     document.getElementById('schritte-date-nav').style.display = '';
+    const navBtns = document.querySelectorAll('#schritte-date-nav .date-nav-btn');
+    navBtns[0].disabled = (yr <= 2020);
+    navBtns[1].disabled = (yr >= currentYear);
   } else if (tab === '7Ta') {
     const today = new Date();
     const start = new Date(today); start.setDate(today.getDate() - 6);
@@ -897,10 +959,12 @@ function renderSchritte() {
     ? [[yr-1,12],[yr,1],[yr,2],[yr,3],[yr,4],[yr,5],[yr,6],[yr,7],[yr,8],[yr,9],[yr,10],[yr,11]]
     : [[yr-1,12],[yr,1],[yr,2],[yr,3],[yr,4],[yr,5],[yr,6],[yr,7],[yr,8],[yr,9],[yr,10],[yr,11]];
 
+  const todayLimit = new Date(); todayLimit.setHours(23,59,59,999);
   let totalSteps = 0, daysWithData = 0;
   for (const [y, m] of months) {
     const days = daysInMonth(y, m);
     for (let d = 1; d <= days; d++) {
+      if (new Date(y, m-1, d) > todayLimit) continue;
       const v = DATA.steps[dateStr(y, m, d)];
       if (v !== undefined) { totalSteps += v; daysWithData++; }
     }
@@ -965,28 +1029,37 @@ function navigateStudioYear(dir) {
 function renderStudio() {
   const yr = state.studioYear;
   const tab = state.studioTab;
+  const currentYear = new Date().getFullYear();
 
   document.getElementById('studio-date-label').textContent = `Jan. ${yr} – Dez. ${yr}`;
+  const studioNavBtns = document.querySelectorAll('#studio-date-nav .date-nav-btn');
+  if (studioNavBtns.length === 2) {
+    studioNavBtns[0].disabled = (yr <= 2020);
+    studioNavBtns[1].disabled = (yr >= currentYear);
+  }
 
   if (tab === '1J') buildStudioChart1J();
   else if (tab === '7Ta') buildStudioChart7Ta();
   else if (tab === '4Wo') buildStudioChart4Wo();
 
-  // Stats
-  let totalSec = 0, activeDays = 0;
+  // Stats — only count days up to today
+  const todayLimit = new Date(); todayLimit.setHours(23,59,59,999);
+  let totalSec = 0;
   for (let m = 1; m <= 12; m++) {
     const days = daysInMonth(yr, m);
     for (let d = 1; d <= days; d++) {
+      if (new Date(yr, m-1, d) > todayLimit) continue;
       const sessions = DATA.gym[dateStr(yr, m, d)] || [];
-      if (sessions.length) activeDays++;
       sessions.forEach(s => totalSec += parseDuration(s.duration));
     }
   }
   const monthsWithData = Array.from({length:12}, (_,i) => i+1).filter(m => getMonthGymTotal(yr, m) > 0).length;
-  const weeklyAvg = activeDays > 0 ? totalSec / (activeDays / 7) : 0; // rough
-  // Better: totalSec / (days_in_year / 7)
-  const totalDaysInYear = 365;
-  const weeklyAvgReal = totalSec / (totalDaysInYear / 7);
+  // Weekly avg: based on days elapsed in this year (not full 365)
+  const yearStart = new Date(yr, 0, 1);
+  const yearEnd   = new Date(yr, 11, 31);
+  const effectiveEnd = todayLimit < yearEnd ? todayLimit : yearEnd;
+  const daysElapsed = Math.ceil((effectiveEnd - yearStart) / 86400000) + 1;
+  const weeklyAvgReal = daysElapsed > 0 ? totalSec / (daysElapsed / 7) : 0;
   const monthlyAvg = monthsWithData > 0 ? totalSec / monthsWithData : 0;
 
   document.getElementById('stat-gesamt-zeit').textContent = fmtSec(totalSec);
@@ -1062,6 +1135,7 @@ function saveSchritteEntry() {
   const dateKey = document.getElementById('schritte-modal-date').value;
   const steps = parseInt(document.getElementById('schritte-modal-steps').value, 10);
   if (!dateKey || isNaN(steps) || steps < 0) { alert('Bitte Datum und gültige Schrittanzahl eingeben.'); return; }
+  if (new Date(dateKey) > new Date()) { alert('Zukünftige Einträge sind nicht erlaubt.'); return; }
   DATA.steps[dateKey] = steps;
   saveData(DATA);
   document.getElementById('schritte-modal-overlay').classList.remove('open');
@@ -1126,6 +1200,7 @@ function saveStudioEntry() {
   const s = parseInt(document.getElementById('studio-modal-s').value, 10) || 0;
   const totalSec = h * 3600 + m * 60 + s;
   if (!dateKey || totalSec === 0) { alert('Bitte Datum und Dauer eingeben.'); return; }
+  if (new Date(dateKey) > new Date()) { alert('Zukünftige Einträge sind nicht erlaubt.'); return; }
   const duration = fmtSec(totalSec);
   if (!DATA.gym[dateKey]) DATA.gym[dateKey] = [];
   if (state.studioModalEditSessionId) {
