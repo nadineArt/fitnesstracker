@@ -55,11 +55,12 @@ body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh
 .chart-section h3{font-size:17px;font-weight:600;color:#fff;margin-bottom:20px}
 .chart-container{height:230px;position:relative;margin-bottom:12px}
 
-/* Stats grid — two rows, inset 16px from screen edges, vertical separator between columns */
+/* Stats grid — two rows, inset from screen edges, symmetric padding around vertical separator */
 .stats-grid{flex-shrink:0}
 .stats-row{display:flex;border-top:1px solid #3A3A3C;margin:0 16px}
 .stat-item{flex:1;padding:14px 0 12px;min-width:0}
-.stat-item+.stat-item{border-left:1px solid #3A3A3C;padding-left:16px}
+.stat-item:first-child{padding-right:12px}
+.stat-item+.stat-item{border-left:1px solid #3A3A3C;padding-left:12px}
 .stat-value{font-size:26px;font-weight:300;color:#fff;line-height:1.1;font-family:'Roboto Condensed','Roboto',sans-serif}
 .stat-label{font-size:12px;color:#9D9D9D;margin-top:4px;font-weight:400}
 
