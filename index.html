@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fitness Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#111;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif}
+body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh}
+#app{width:100%;max-width:390px;min-height:100vh;background:#000;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.view{display:none;flex-direction:column;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.view.active{display:flex}
+
+/* Status bar */
+.status-bar{background:#000;padding:14px 20px 6px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.status-time{font-size:15px;font-weight:600;color:#fff}
+.status-icons{display:flex;align-items:center;gap:6px;color:#fff;font-size:12px}
+
+/* Header */
+.header{background:#000;padding:8px 16px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.header-title{font-size:17px;font-weight:600;color:#fff;flex:1;text-align:left;margin-left:8px}
+.back-btn{color:#fff;background:none;border:none;font-size:22px;cursor:pointer;padding:4px;line-height:1;min-width:32px;text-align:center}
+.hilfe-btn{color:#8E8E93;background:none;border:none;font-size:14px;font-weight:500;cursor:pointer;padding:4px 0}
+.gear-btn{color:#fff;background:none;border:none;font-size:20px;cursor:pointer;padding:4px}
+
+/* Segment control (tab bar) */
+.segment-wrap{padding:8px 16px;flex-shrink:0}
+.segment{background:#2C2C2E;border-radius:9px;display:flex;padding:2px;gap:2px}
+.segment-btn{flex:1;border:none;background:transparent;color:#8E8E93;font-size:13px;font-weight:500;padding:7px 4px;border-radius:7px;cursor:pointer;transition:all .15s}
+.segment-btn.active{background:#fff;color:#000;font-weight:600}
+
+/* Toggle (Wochen/Monatsübersicht) */
+.toggle-wrap{padding:4px 16px 8px;flex-shrink:0}
+.toggle{background:#2C2C2E;border-radius:9px;display:flex;padding:2px}
+.toggle-btn{flex:1;border:none;background:transparent;color:#8E8E93;font-size:13px;font-weight:500;padding:7px 8px;border-radius:7px;cursor:pointer;transition:all .15s}
+.toggle-btn.active{background:#fff;color:#000;font-weight:600}
+
+/* Date navigator */
+.date-nav{display:flex;align-items:center;justify-content:center;padding:8px 16px 4px;flex-shrink:0;gap:8px}
+.date-nav-btn{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.date-nav-btn:active{background:#2C2C2E}
+.date-nav-label{font-size:15px;font-weight:500;color:#fff;flex:1;text-align:center}
+
+/* Zeit/Kalorien sub-tabs */
+.sub-tabs{display:flex;padding:0 16px 4px;border-bottom:1px solid #2C2C2E;flex-shrink:0}
+.sub-tab{background:none;border:none;color:#8E8E93;font-size:15px;font-weight:500;padding:8px 16px 10px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.sub-tab.active{color:#fff;border-bottom-color:#fff}
+
+/* Chart */
+.chart-section{padding:8px 16px 4px;flex-shrink:0}
+.chart-section h3{font-size:17px;font-weight:700;color:#fff;margin-bottom:12px}
+.chart-container{height:220px;position:relative}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;padding:16px;gap:0;border-top:1px solid #2C2C2E;flex-shrink:0}
+.stat-item{padding:10px 8px}
+.stat-value{font-size:28px;font-weight:700;color:#fff;line-height:1.1}
+.stat-value.medium{font-size:22px}
+.stat-label{font-size:12px;color:#8E8E93;margin-top:3px}
+.stats-grid .stat-item:nth-child(1),.stats-grid .stat-item:nth-child(3){border-right:1px solid #2C2C2E}
+.stats-grid .stat-item:nth-child(1),.stats-grid .stat-item:nth-child(2){border-bottom:1px solid #2C2C2E}
+
+/* Records row */
+.records-row{padding:16px;border-top:1px solid #2C2C2E;border-bottom:1px solid #2C2C2E;flex-shrink:0}
+.records-row button{background:none;border:none;color:#fff;font-size:15px;font-weight:500;cursor:pointer;width:100%;text-align:left;padding:0;display:flex;justify-content:space-between;align-items:center}
+.records-row button::after{content:'›';font-size:20px;color:#8E8E93}
+
+/* Monthly list */
+.section-header{padding:12px 16px 6px;flex-shrink:0}
+.section-label{font-size:11px;font-weight:500;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase}
+.month-list{flex:1}
+.month-row{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #1C1C1E;cursor:pointer;background:#000}
+.month-row:active{background:#1C1C1E}
+.month-row-name{font-size:16px;color:#fff}
+.month-row-value{font-size:16px;color:#fff;font-weight:500}
+
+/* Day/session list */
+.day-list{flex:1}
+.day-row{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #1C1C1E;cursor:pointer;background:#000}
+.day-row:active{background:#1C1C1E}
+.day-row-date{font-size:15px;color:#fff}
+.day-row-value{font-size:15px;color:#fff;font-weight:500}
+.day-row-sub{font-size:13px;color:#8E8E93;margin-top:2px}
+.empty-state{padding:40px 16px;text-align:center;color:#8E8E93;font-size:15px}
+
+/* FAB */
+.fab{position:fixed;bottom:24px;right:calc(50% - 195px + 16px);width:52px;height:52px;border-radius:50%;background:#0A84FF;border:none;color:#fff;font-size:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(10,132,255,.4);z-index:50;transition:transform .1s}
+.fab:active{transform:scale(.93)}
+@media(max-width:390px){.fab{right:16px}}
+
+/* Modal overlay */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:none;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#1C1C1E;border-radius:16px 16px 0 0;width:100%;max-width:390px;padding:20px 20px 40px;animation:slideUp .25s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;background:#3A3A3C;border-radius:2px;margin:0 auto 20px}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-title{font-size:17px;font-weight:600;color:#fff}
+.modal-close{background:none;border:none;color:#8E8E93;font-size:22px;cursor:pointer;padding:4px;line-height:1}
+.form-group{margin-bottom:16px}
+.form-label{font-size:13px;color:#8E8E93;margin-bottom:6px;display:block}
+.form-input{width:100%;background:#2C2C2E;border:none;border-radius:10px;color:#fff;font-size:16px;padding:12px 14px;outline:none;-webkit-appearance:none;appearance:none}
+.form-input:focus{background:#3A3A3C}
+.duration-row{display:flex;gap:8px}
+.duration-col{flex:1;text-align:center}
+.duration-input{width:100%;background:#2C2C2E;border:none;border-radius:10px;color:#fff;font-size:20px;font-weight:600;padding:12px 8px;text-align:center;outline:none;-webkit-appearance:none;appearance:none}
+.duration-input:focus{background:#3A3A3C}
+.duration-label{font-size:11px;color:#8E8E93;margin-top:4px}
+.btn-save{width:100%;background:#0A84FF;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;padding:14px;cursor:pointer;margin-top:8px}
+.btn-save:active{opacity:.8}
+.btn-delete{width:100%;background:#FF3B30;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;padding:14px;cursor:pointer;margin-top:8px}
+.btn-delete:active{opacity:.8}
+
+/* Home view */
+.home-header{background:#000;padding:14px 16px 12px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.home-title{font-size:20px;font-weight:700;color:#fff}
+.home-list{padding:0 16px;flex:1}
+.home-card{background:#1C1C1E;border-radius:12px;display:flex;align-items:center;padding:16px;margin-bottom:12px;cursor:pointer;border:none;width:100%;text-align:left}
+.home-card:active{background:#2C2C2E}
+.home-card-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-right:14px;flex-shrink:0}
+.home-card-text h3{font-size:16px;font-weight:600;color:#fff}
+.home-card-text p{font-size:13px;color:#8E8E93;margin-top:2px}
+.home-card-arrow{margin-left:auto;color:#8E8E93;font-size:18px}
+
+/* Export panel */
+.export-panel{background:#1C1C1E;margin:16px;border-radius:12px;padding:16px;display:none}
+.export-panel.open{display:block}
+.export-panel h3{font-size:15px;font-weight:600;color:#fff;margin-bottom:12px}
+.export-btn{width:100%;background:#2C2C2E;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:500;padding:12px;cursor:pointer;margin-bottom:8px;text-align:center}
+.export-btn:active{background:#3A3A3C}
+.export-btn.green{background:#1C3A1C;color:#30D158}
+.export-btn.blue{background:#1C2A3A;color:#0A84FF}
+
+/* Scrollable content area */
+.scroll-content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+</style>
+</head>
+<body>
+<!--
+  DEPLOYMENT: GitHub Pages
+  1. GitHub-Repository erstellen
+  2. Diese Datei als index.html committen
+  3. Settings > Pages > Source: main branch
+  4. URL: https://[username].github.io/[repo-name]/
+
+  DATENSYNC: Export-Button (Zahnrad-Icon oben rechts auf Home) → JSON herunterladen
+  Auf Handy: Import-Button → JSON-Datei hochladen
+-->
+<div id="app">
+
+  <!-- HOME VIEW -->
+  <div id="view-home" class="view active" style="background:#000">
+    <div class="status-bar">
+      <span class="status-time">11:34</span>
+      <span class="status-icons">▲ N ▤ ▐▐▐ ))) ▮</span>
+    </div>
+    <div class="home-header">
+      <span class="home-title">Fitness Tracker</span>
+      <button class="gear-btn" onclick="toggleExportPanel()">⚙</button>
+    </div>
+    <div id="export-panel" class="export-panel">
+      <h3>Datensynchronisation</h3>
+      <button class="export-btn green" onclick="exportData()">⬇ Daten exportieren (JSON)</button>
+      <label class="export-btn blue" style="display:block;cursor:pointer">
+        ⬆ Daten importieren (JSON)
+        <input type="file" accept=".json" style="display:none" onchange="importData(event)">
+      </label>
+    </div>
+    <div class="home-list" style="padding-top:8px">
+      <button class="home-card" onclick="navigate('schritte')">
+        <div class="home-card-icon" style="background:#0A2E0A">🦶</div>
+        <div class="home-card-text">
+          <h3>Schritte</h3>
+          <p id="home-steps-summary">Lade Daten…</p>
+        </div>
+        <span class="home-card-arrow">›</span>
+      </button>
+      <button class="home-card" onclick="navigate('studio')">
+        <div class="home-card-icon" style="background:#0A1A2E">🏋</div>
+        <div class="home-card-text">
+          <h3>Fitnessstudio und -geräte</h3>
+          <p id="home-gym-summary">Lade Daten…</p>
+        </div>
+        <span class="home-card-arrow">›</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- SCHRITTE VIEW -->
+  <div id="view-schritte" class="view" style="background:#000">
+    <div class="status-bar">
+      <span class="status-time" id="schritte-status-time">11:34</span>
+      <span class="status-icons">▐▐▐ ))) ▮</span>
+    </div>
+    <div class="header">
+      <button class="back-btn" onclick="navigate('home')">‹</button>
+      <span class="header-title">Schritte</span>
+      <button class="hilfe-btn">HILFE</button>
+    </div>
+
+    <div class="scroll-content" id="schritte-scroll">
+      <div class="segment-wrap">
+        <div class="segment" id="schritte-tabs">
+          <button class="segment-btn" data-tab="1T" onclick="setSchritteTab('1T')">1T</button>
+          <button class="segment-btn" data-tab="7Ta" onclick="setSchritteTab('7Ta')">7 Ta.</button>
+          <button class="segment-btn" data-tab="4Wo" onclick="setSchritteTab('4Wo')">4 Wo.</button>
+          <button class="segment-btn active" data-tab="1J" onclick="setSchritteTab('1J')">1 J</button>
+        </div>
+      </div>
+
+      <div class="date-nav" id="schritte-date-nav">
+        <button class="date-nav-btn" onclick="navigateSchritteYear(-1)">‹</button>
+        <span class="date-nav-label" id="schritte-date-label">Dez. 2025 – Nov. 2026</span>
+        <button class="date-nav-btn" onclick="navigateSchritteYear(1)">›</button>
+      </div>
+
+      <div class="toggle-wrap" id="schritte-toggle-wrap">
+        <div class="toggle">
+          <button class="toggle-btn" id="toggle-woche" onclick="setSchritteToggle('woche')">Wochenübersicht</button>
+          <button class="toggle-btn active" id="toggle-monat" onclick="setSchritteToggle('monat')">Monatsübersicht</button>
+        </div>
+      </div>
+
+      <!-- 1J Chart -->
+      <div class="chart-section" id="schritte-chart-section">
+        <h3 id="schritte-chart-title">Monatsübersicht</h3>
+        <div class="chart-container">
+          <canvas id="schritte-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- 1T single day -->
+      <div id="schritte-1t-section" style="display:none;padding:16px">
+        <div style="text-align:center;padding:24px 0">
+          <div id="schritte-1t-value" style="font-size:48px;font-weight:700;color:#30D158">–</div>
+          <div style="font-size:14px;color:#8E8E93;margin-top:4px">Schritte</div>
+          <div id="schritte-1t-date" style="font-size:13px;color:#8E8E93;margin-top:8px"></div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" id="schritte-stats">
+        <div class="stat-item">
+          <div class="stat-value medium" id="stat-gesamt-schritte">–</div>
+          <div class="stat-label">Gesamtschritte</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value medium" id="stat-strecke">–</div>
+          <div class="stat-label">Gesamtstrecke</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value medium" id="stat-tages-avg">–</div>
+          <div class="stat-label">Tagesdurchschnitt</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value medium" id="stat-monats-avg">–</div>
+          <div class="stat-label">Monats-Ø</div>
+        </div>
+      </div>
+
+      <div class="records-row">
+        <button>Persönliche Rekorde anzeigen</button>
+      </div>
+
+      <div class="section-header">
+        <div class="section-label" id="schritte-list-label">AKTIVITÄTEN VOM TYP 'SCHRITTE'</div>
+      </div>
+      <div class="month-list" id="schritte-month-list"></div>
+    </div>
+
+    <button class="fab" onclick="openSchritteModal(null, null)">+</button>
+  </div>
+
+  <!-- SCHRITTE DAY DETAIL VIEW -->
+  <div id="view-schritte-day" class="view" style="background:#000">
+    <div class="status-bar">
+      <span class="status-time">11:34</span>
+      <span class="status-icons">▐▐▐ ))) ▮</span>
+    </div>
+    <div class="header">
+      <button class="back-btn" onclick="navigate('schritte')">‹</button>
+      <span class="header-title" id="schritte-day-header-title">Januar 2026</span>
+      <span style="width:32px"></span>
+    </div>
+    <div class="scroll-content">
+      <div class="day-list" id="schritte-day-list"></div>
+    </div>
+    <button class="fab" onclick="openSchritteModal(null, state.schritteDetailMonth)">+</button>
+  </div>
+
+  <!-- STUDIO VIEW -->
+  <div id="view-studio" class="view" style="background:#000">
+    <div class="status-bar">
+      <span class="status-time">11:34</span>
+      <span class="status-icons">▐▐▐ ))) ▮</span>
+    </div>
+    <div class="header">
+      <button class="back-btn" onclick="navigate('home')">‹</button>
+      <span class="header-title">Fitnessstudio und -geräte</span>
+      <span style="width:32px"></span>
+    </div>
+
+    <div class="scroll-content" id="studio-scroll">
+      <div style="padding:4px 16px 0;font-size:17px;font-weight:700;color:#fff">Alle für 'Fitnessstudio und -geräte' ▾</div>
+
+      <div class="segment-wrap">
+        <div class="segment" id="studio-tabs">
+          <button class="segment-btn" data-tab="7Ta" onclick="setStudioTab('7Ta')">7 Ta.</button>
+          <button class="segment-btn" data-tab="4Wo" onclick="setStudioTab('4Wo')">4 Wo.</button>
+          <button class="segment-btn active" data-tab="1J" onclick="setStudioTab('1J')">1 J</button>
+        </div>
+      </div>
+
+      <div class="date-nav">
+        <button class="date-nav-btn" onclick="navigateStudioYear(-1)">‹</button>
+        <span class="date-nav-label" id="studio-date-label">Jan. 2026 – Dez. 2026</span>
+        <button class="date-nav-btn" onclick="navigateStudioYear(1)">›</button>
+      </div>
+
+      <div class="sub-tabs">
+        <button class="sub-tab active">Zeit</button>
+        <button class="sub-tab">Kalorien</button>
+      </div>
+
+      <div class="chart-section">
+        <h3>Gesamtzeit</h3>
+        <div class="chart-container">
+          <canvas id="studio-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="stats-grid" id="studio-stats">
+        <div class="stat-item">
+          <div class="stat-value medium" id="stat-gesamt-zeit">–</div>
+          <div class="stat-label">Gesamtzeit</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value medium" id="stat-wochen-avg">–</div>
+          <div class="stat-label">Wochendurchschnitt</div>
+        </div>
+        <div class="stat-item" style="border-bottom:none">
+          <div class="stat-value medium" id="stat-studio-monats-avg">–</div>
+          <div class="stat-label">Monats-Ø</div>
+        </div>
+        <div class="stat-item" style="border-bottom:none"></div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-label">AKTIVITÄTEN VOM TYP 'FITNESSSTUDIO UND -GERÄTE'</div>
+      </div>
+      <div class="month-list" id="studio-month-list"></div>
+    </div>
+
+    <button class="fab" onclick="openStudioModal(null, null, null)">+</button>
+  </div>
+
+  <!-- STUDIO SESSION DETAIL VIEW -->
+  <div id="view-studio-day" class="view" style="background:#000">
+    <div class="status-bar">
+      <span class="status-time">11:34</span>
+      <span class="status-icons">▐▐▐ ))) ▮</span>
+    </div>
+    <div class="header">
+      <button class="back-btn" onclick="navigate('studio')">‹</button>
+      <span class="header-title" id="studio-day-header-title">Januar 2026</span>
+      <span style="width:32px"></span>
+    </div>
+    <div class="scroll-content">
+      <div class="day-list" id="studio-session-list"></div>
+    </div>
+    <button class="fab" onclick="openStudioModal(null, null, state.studioDetailMonth)">+</button>
+  </div>
+
+</div><!-- #app -->
+
+<!-- SCHRITTE MODAL -->
+<div class="modal-overlay" id="schritte-modal-overlay" onclick="closeSchritteModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="schritte-modal-title">Schritte eintragen</span>
+      <button class="modal-close" onclick="closeSchritteModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Datum</label>
+      <input type="date" class="form-input" id="schritte-modal-date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Schritte</label>
+      <input type="number" class="form-input" id="schritte-modal-steps" placeholder="0" min="0" inputmode="numeric">
+    </div>
+    <button class="btn-save" onclick="saveSchritteEntry()">Speichern</button>
+    <button class="btn-delete" id="schritte-modal-delete" style="display:none" onclick="deleteSchritteEntry()">Eintrag löschen</button>
+  </div>
+</div>
+
+<!-- STUDIO MODAL -->
+<div class="modal-overlay" id="studio-modal-overlay" onclick="closeStudioModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <span class="modal-title" id="studio-modal-title">Session eintragen</span>
+      <button class="modal-close" onclick="closeStudioModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Datum</label>
+      <input type="date" class="form-input" id="studio-modal-date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Dauer</label>
+      <div class="duration-row">
+        <div class="duration-col">
+          <input type="number" class="duration-input" id="studio-modal-h" placeholder="0" min="0" max="23" inputmode="numeric">
+          <div class="duration-label">Stunden</div>
+        </div>
+        <div class="duration-col" style="display:flex;align-items:center;justify-content:center;padding-top:0">
+          <span style="font-size:24px;font-weight:700;color:#fff;margin-top:-16px">:</span>
+        </div>
+        <div class="duration-col">
+          <input type="number" class="duration-input" id="studio-modal-m" placeholder="0" min="0" max="59" inputmode="numeric">
+          <div class="duration-label">Minuten</div>
+        </div>
+        <div class="duration-col" style="display:flex;align-items:center;justify-content:center;padding-top:0">
+          <span style="font-size:24px;font-weight:700;color:#fff;margin-top:-16px">:</span>
+        </div>
+        <div class="duration-col">
+          <input type="number" class="duration-input" id="studio-modal-s" placeholder="0" min="0" max="59" inputmode="numeric">
+          <div class="duration-label">Sekunden</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-save" onclick="saveStudioEntry()">Speichern</button>
+    <button class="btn-delete" id="studio-modal-delete" style="display:none" onclick="deleteStudioEntry()">Session löschen</button>
+  </div>
+</div>
+
+<script>
+// ===== CONSTANTS =====
+const MONTHS_DE = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const MONTHS_SHORT = ['Jan.','Feb.','März','Apr.','Mai','Jun.','Jul.','Aug.','Sept.','Okt.','Nov.','Dez.'];
+const DAYS_DE = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+const DAYS_FULL = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+const STORAGE_KEY = 'fitnessData';
+
+// ===== SEEDED RNG =====
+function seededRng(seed) {
+  let s = seed >>> 0;
+  return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 0xFFFFFFFF; };
+}
+
+// ===== HELPERS =====
+function daysInMonth(year, month) { // month 1-indexed
+  return new Date(year, month, 0).getDate();
+}
+function pad2(n) { return String(n).padStart(2, '0'); }
+function dateStr(y, m, d) { return `${y}-${pad2(m)}-${pad2(d)}`; }
+function fmtNum(n) {
+  if (n === undefined || n === null) return '–';
+  return Math.round(n).toLocaleString('de-DE');
+}
+function fmtSec(totalSec) {
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = Math.floor(totalSec % 60);
+  return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+}
+function parseDuration(str) { // "HH:MM:SS" → seconds
+  if (!str) return 0;
+  const parts = str.split(':').map(Number);
+  return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
+}
+function simpleUUID() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+function todayStr() {
+  const d = new Date();
+  return dateStr(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
+
+// ===== SEED DATA =====
+function generateSeedSteps() {
+  const monthlyTargets = [
+    [2025,12,168210], [2026,1,172932], [2026,2,112541], [2026,3,181471],
+    [2026,4,137471], [2026,5,203834], [2026,6,168341], [2026,7,240867],
+    [2026,8,100498], [2026,9,145304], [2026,10,59569], [2026,11,18124]
+  ];
+  const steps = {};
+  for (const [year, month, total] of monthlyTargets) {
+    const isNov2026 = year === 2026 && month === 11;
+    const days = isNov2026 ? 14 : daysInMonth(year, month);
+    const rng = seededRng(year * 100 + month);
+    const weights = [];
+    for (let d = 1; d <= days; d++) {
+      const dow = new Date(year, month - 1, d).getDay();
+      let w = dow === 0 ? 1.4 : dow === 6 ? 1.5 : 0.85;
+      if (rng() < 0.06) w *= 0.1;
+      w *= (0.9 + rng() * 0.2);
+      weights.push(w);
+    }
+    const wSum = weights.reduce((a, b) => a + b, 0);
+    const scale = total / wSum;
+    let assigned = 0;
+    for (let d = 1; d < days; d++) {
+      const v = Math.round(weights[d-1] * scale);
+      steps[dateStr(year, month, d)] = v;
+      assigned += v;
+    }
+    steps[dateStr(year, month, days)] = total - assigned;
+  }
+  return steps;
+}
+
+function generateSeedGym() {
+  const gymConfig = [
+    [2026,1,2,6*3600],[2026,2,3,11*3600],[2026,3,3,12*3600],[2026,4,4,14*3600],
+    [2026,5,4,13.5*3600],[2026,6,4,13.333*3600],[2026,7,3,9.417*3600],
+    [2026,8,3,9.083*3600],[2026,9,2,5.133*3600],[2026,10,2,3.683*3600],
+    [2026,11,2,3.683*3600],[2026,12,2,5.383*3600]
+  ];
+  const DOW_PATTERNS = { 2:[1,4], 3:[1,3,5], 4:[1,3,5,6] };
+  const gym = {};
+  for (const [year, month, sessPerWeek, totalSec] of gymConfig) {
+    const pattern = DOW_PATTERNS[sessPerWeek];
+    const days = daysInMonth(year, month);
+    const trainingDays = [];
+    for (let d = 1; d <= days; d++) {
+      if (pattern.includes(new Date(year, month - 1, d).getDay())) trainingDays.push(d);
+    }
+    if (!trainingDays.length) continue;
+    const rng = seededRng(year * 1000 + month);
+    const targetPerSession = totalSec / trainingDays.length;
+    let assigned = 0;
+    trainingDays.forEach((day, idx) => {
+      const ds = dateStr(year, month, day);
+      let dur;
+      if (idx < trainingDays.length - 1) {
+        dur = Math.round(targetPerSession * (0.85 + rng() * 0.3));
+        dur = Math.max(2700, Math.min(5400, dur));
+        assigned += dur;
+      } else {
+        dur = Math.round(totalSec - assigned);
+        dur = Math.max(2700, Math.min(5400, dur));
+      }
+      if (!gym[ds]) gym[ds] = [];
+      gym[ds].push({ id: `${ds}-${idx}`, duration: fmtSec(dur) });
+    });
+  }
+  return gym;
+}
+
+// ===== DATA LAYER =====
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  const data = { steps: generateSeedSteps(), gym: generateSeedGym() };
+  saveData(data);
+  return data;
+}
+function saveData(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+let DATA = loadData();
+
+// ===== STATE =====
+const state = {
+  schritteTab: '1J',
+  schritteToggle: 'monat',
+  schritteYear: 2026, // end year of 12-month window (Dez prev-1 to Nov schritteYear)
+  schritteDetailMonth: null, // "2026-01"
+  studioTab: '1J',
+  studioYear: 2026,
+  studioDetailMonth: null,
+  schritteModalEditDate: null,
+  studioModalEditSessionId: null,
+  studioModalEditDate: null,
+};
+
+// ===== CHARTS =====
+let schritteChart = null;
+let studioChart = null;
+
+function destroyChart(c) { if (c) { try { c.destroy(); } catch(e) {} } }
+
+const CHART_DEFAULTS = {
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { display: false }, border: { display: false }, ticks: { color: '#8E8E93', font: { size: 11 } } },
+    y: { grid: { color: '#2C2C2E' }, border: { display: false }, ticks: { color: '#8E8E93', font: { size: 11 } } }
+  },
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: { duration: 300 }
+};
+
+function buildSchritteChart1J() {
+  const yr = state.schritteYear;
+  // 12 months: Dec(yr-1), Jan..Nov(yr)
+  const months = [[yr-1,12],[yr,1],[yr,2],[yr,3],[yr,4],[yr,5],[yr,6],[yr,7],[yr,8],[yr,9],[yr,10],[yr,11]];
+  const labels = months.map(([y,m]) => MONTHS_SHORT[m-1]);
+  const values = months.map(([y,m]) => getMonthStepsTotal(y, m));
+  destroyChart(schritteChart);
+  const ctx = document.getElementById('schritte-chart').getContext('2d');
+  schritteChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: '#30D158', borderRadius: 4, borderSkipped: false }] },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        tooltip: { callbacks: { label: ctx => fmtNum(ctx.parsed.y) + ' Schritte' } }
+      },
+      scales: {
+        ...CHART_DEFAULTS.scales,
+        y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v } }
+      }
+    }
+  });
+}
+
+function buildSchritteChart7Ta() {
+  const today = new Date();
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    days.push(d);
+  }
+  const labels = days.map(d => DAYS_DE[d.getDay()]);
+  const values = days.map(d => DATA.steps[dateStr(d.getFullYear(), d.getMonth()+1, d.getDate())] || 0);
+  destroyChart(schritteChart);
+  const ctx = document.getElementById('schritte-chart').getContext('2d');
+  schritteChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: '#30D158', borderRadius: 4, borderSkipped: false }] },
+    options: { ...CHART_DEFAULTS, plugins: { ...CHART_DEFAULTS.plugins, tooltip: { callbacks: { label: ctx => fmtNum(ctx.parsed.y) + ' Schritte' } } } }
+  });
+}
+
+function buildSchritteChart4Wo() {
+  const today = new Date();
+  const weeks = [];
+  for (let w = 3; w >= 0; w--) {
+    const end = new Date(today); end.setDate(today.getDate() - w * 7);
+    const start = new Date(end); start.setDate(end.getDate() - 6);
+    let total = 0;
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      total += DATA.steps[dateStr(d.getFullYear(), d.getMonth()+1, d.getDate())] || 0;
+    }
+    weeks.push({ label: `KW ${getWeekNumber(end)}`, total });
+  }
+  destroyChart(schritteChart);
+  const ctx = document.getElementById('schritte-chart').getContext('2d');
+  schritteChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: weeks.map(w => w.label), datasets: [{ data: weeks.map(w => w.total), backgroundColor: '#30D158', borderRadius: 4, borderSkipped: false }] },
+    options: { ...CHART_DEFAULTS }
+  });
+}
+
+function getWeekNumber(d) {
+  const date = new Date(d.getTime());
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+  const week1 = new Date(date.getFullYear(), 0, 4);
+  return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
+function buildStudioChart1J() {
+  const yr = state.studioYear;
+  const labels = MONTHS_SHORT;
+  const values = Array.from({length:12}, (_, i) => {
+    const total = getMonthGymTotal(yr, i+1);
+    return total / 3600; // decimal hours
+  });
+  destroyChart(studioChart);
+  const ctx = document.getElementById('studio-chart').getContext('2d');
+  studioChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: '#5B9BD5', borderRadius: 4, borderSkipped: false }] },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        tooltip: { callbacks: { label: ctx => fmtSec(Math.round(ctx.parsed.y * 3600)) } }
+      },
+      scales: {
+        ...CHART_DEFAULTS.scales,
+        y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => v.toFixed(1).replace('.',',') + 'h' } }
+      }
+    }
+  });
+}
+
+function buildStudioChart7Ta() {
+  const today = new Date();
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    days.push(d);
+  }
+  const labels = days.map(d => DAYS_DE[d.getDay()]);
+  const values = days.map(d => {
+    const ds = dateStr(d.getFullYear(), d.getMonth()+1, d.getDate());
+    const sessions = DATA.gym[ds] || [];
+    return sessions.reduce((a, s) => a + parseDuration(s.duration), 0) / 3600;
+  });
+  destroyChart(studioChart);
+  const ctx = document.getElementById('studio-chart').getContext('2d');
+  studioChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: '#5B9BD5', borderRadius: 4, borderSkipped: false }] },
+    options: { ...CHART_DEFAULTS, plugins: { ...CHART_DEFAULTS.plugins, tooltip: { callbacks: { label: ctx => fmtSec(Math.round(ctx.parsed.y * 3600)) } } } }
+  });
+}
+
+function buildStudioChart4Wo() {
+  const today = new Date();
+  const weeks = [];
+  for (let w = 3; w >= 0; w--) {
+    const end = new Date(today); end.setDate(today.getDate() - w * 7);
+    const start = new Date(end); start.setDate(end.getDate() - 6);
+    let total = 0;
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const ds = dateStr(d.getFullYear(), d.getMonth()+1, d.getDate());
+      (DATA.gym[ds] || []).forEach(s => total += parseDuration(s.duration));
+    }
+    weeks.push({ label: `KW ${getWeekNumber(end)}`, total });
+  }
+  destroyChart(studioChart);
+  const ctx = document.getElementById('studio-chart').getContext('2d');
+  studioChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: weeks.map(w => w.label), datasets: [{ data: weeks.map(w => w.total/3600), backgroundColor: '#5B9BD5', borderRadius: 4, borderSkipped: false }] },
+    options: { ...CHART_DEFAULTS }
+  });
+}
+
+// ===== DATA AGGREGATION =====
+function getMonthStepsTotal(year, month) {
+  let total = 0;
+  const days = daysInMonth(year, month);
+  for (let d = 1; d <= days; d++) {
+    total += DATA.steps[dateStr(year, month, d)] || 0;
+  }
+  return total;
+}
+
+function getMonthGymTotal(year, month) {
+  let total = 0;
+  const days = daysInMonth(year, month);
+  for (let d = 1; d <= days; d++) {
+    const sessions = DATA.gym[dateStr(year, month, d)] || [];
+    sessions.forEach(s => total += parseDuration(s.duration));
+  }
+  return total;
+}
+
+// ===== NAVIGATION =====
+function navigate(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  if (view === 'schritte') {
+    document.getElementById('view-schritte').classList.add('active');
+    renderSchritte();
+  } else if (view === 'studio') {
+    document.getElementById('view-studio').classList.add('active');
+    renderStudio();
+  } else if (view === 'schritte-day') {
+    document.getElementById('view-schritte-day').classList.add('active');
+    renderSchritteDayDetail();
+  } else if (view === 'studio-day') {
+    document.getElementById('view-studio-day').classList.add('active');
+    renderStudioDayDetail();
+  } else {
+    document.getElementById('view-home').classList.add('active');
+    renderHome();
+  }
+  window.scrollTo(0, 0);
+}
+
+// ===== HOME =====
+function renderHome() {
+  // Steps summary
+  let totalSteps = 0;
+  Object.values(DATA.steps).forEach(v => totalSteps += v);
+  document.getElementById('home-steps-summary').textContent = fmtNum(totalSteps) + ' Schritte gesamt 2025/26';
+
+  // Gym summary
+  let totalGymSec = 0;
+  Object.values(DATA.gym).forEach(sessions => sessions.forEach(s => totalGymSec += parseDuration(s.duration)));
+  document.getElementById('home-gym-summary').textContent = 'Gesamtzeit ' + fmtSec(totalGymSec) + ' in 2026';
+}
+
+function toggleExportPanel() {
+  const panel = document.getElementById('export-panel');
+  panel.classList.toggle('open');
+}
+
+function exportData() {
+  const json = JSON.stringify(DATA, null, 2);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'fitnessData.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (parsed.steps && parsed.gym) {
+        DATA = parsed;
+        saveData(DATA);
+        alert('Daten erfolgreich importiert!');
+        renderHome();
+      } else { alert('Ungültige Datei.'); }
+    } catch { alert('Fehler beim Einlesen der Datei.'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ===== SCHRITTE VIEW =====
+function setSchritteTab(tab) {
+  state.schritteTab = tab;
+  document.querySelectorAll('#schritte-tabs .segment-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  renderSchritte();
+}
+
+function setSchritteToggle(t) {
+  state.schritteToggle = t;
+  document.getElementById('toggle-woche').classList.toggle('active', t === 'woche');
+  document.getElementById('toggle-monat').classList.toggle('active', t === 'monat');
+  document.getElementById('schritte-chart-title').textContent = t === 'woche' ? 'Wochenübersicht' : 'Monatsübersicht';
+  buildSchritteChart1J();
+}
+
+function navigateSchritteYear(dir) {
+  state.schritteYear += dir;
+  renderSchritte();
+}
+
+function renderSchritte() {
+  const tab = state.schritteTab;
+  const yr = state.schritteYear;
+
+  // Show/hide sections
+  const show1J = tab === '1J';
+  const show1T = tab === '1T';
+  document.getElementById('schritte-toggle-wrap').style.display = show1J ? '' : 'none';
+  document.getElementById('schritte-chart-section').style.display = show1T ? 'none' : '';
+  document.getElementById('schritte-1t-section').style.display = show1T ? '' : 'none';
+  document.getElementById('schritte-stats').style.display = '';
+
+  // Date label
+  let dateLabel = '';
+  if (tab === '1J') {
+    dateLabel = `Dez. ${yr-1} – Nov. ${yr}`;
+    document.getElementById('schritte-date-nav').style.display = '';
+  } else if (tab === '7Ta') {
+    const today = new Date();
+    const start = new Date(today); start.setDate(today.getDate() - 6);
+    dateLabel = `${start.getDate()}. ${MONTHS_SHORT[start.getMonth()]} – ${today.getDate()}. ${MONTHS_SHORT[today.getMonth()]} ${today.getFullYear()}`;
+    document.getElementById('schritte-date-nav').style.display = 'none';
+  } else if (tab === '4Wo') {
+    const today = new Date();
+    const start = new Date(today); start.setDate(today.getDate() - 27);
+    dateLabel = `${start.getDate()}. ${MONTHS_SHORT[start.getMonth()]} – ${today.getDate()}. ${MONTHS_SHORT[today.getMonth()]} ${today.getFullYear()}`;
+    document.getElementById('schritte-date-nav').style.display = 'none';
+  } else if (tab === '1T') {
+    const today = new Date();
+    dateLabel = `${today.getDate()}. ${MONTHS_DE[today.getMonth()]} ${today.getFullYear()}`;
+    document.getElementById('schritte-date-nav').style.display = '';
+    // Show today's steps
+    const ds = todayStr();
+    const val = DATA.steps[ds] || 0;
+    document.getElementById('schritte-1t-value').textContent = fmtNum(val);
+    document.getElementById('schritte-1t-date').textContent = dateLabel;
+  }
+  document.getElementById('schritte-date-label').textContent = dateLabel;
+
+  // Build chart
+  if (tab === '1J') buildSchritteChart1J();
+  else if (tab === '7Ta') buildSchritteChart7Ta();
+  else if (tab === '4Wo') buildSchritteChart4Wo();
+
+  // Stats (1J basis)
+  const months = tab === '1J'
+    ? [[yr-1,12],[yr,1],[yr,2],[yr,3],[yr,4],[yr,5],[yr,6],[yr,7],[yr,8],[yr,9],[yr,10],[yr,11]]
+    : [[yr-1,12],[yr,1],[yr,2],[yr,3],[yr,4],[yr,5],[yr,6],[yr,7],[yr,8],[yr,9],[yr,10],[yr,11]];
+
+  let totalSteps = 0, daysWithData = 0;
+  for (const [y, m] of months) {
+    const days = daysInMonth(y, m);
+    for (let d = 1; d <= days; d++) {
+      const v = DATA.steps[dateStr(y, m, d)];
+      if (v !== undefined) { totalSteps += v; daysWithData++; }
+    }
+  }
+  const monthsWithData = months.filter(([y,m]) => getMonthStepsTotal(y,m) > 0).length;
+  const dist = (totalSteps * 0.0008).toFixed(1).replace('.', ',');
+  document.getElementById('stat-gesamt-schritte').textContent = fmtNum(totalSteps);
+  document.getElementById('stat-strecke').textContent = dist + ' km';
+  document.getElementById('stat-tages-avg').textContent = daysWithData > 0 ? fmtNum(Math.round(totalSteps / daysWithData)) : '–';
+  document.getElementById('stat-monats-avg').textContent = monthsWithData > 0 ? fmtNum(Math.round(totalSteps / monthsWithData)) : '–';
+
+  // Monthly list
+  const listEl = document.getElementById('schritte-month-list');
+  listEl.innerHTML = '';
+  const listMonths = [...months].reverse();
+  for (const [y, m] of listMonths) {
+    const total = getMonthStepsTotal(y, m);
+    if (total === 0) continue;
+    const row = document.createElement('div');
+    row.className = 'month-row';
+    const name = m === 12 && y === yr-1 ? `Dezember ${yr-1}` : MONTHS_DE[m-1] + (y !== yr ? ` ${y}` : '');
+    row.innerHTML = `<span class="month-row-name">${name}</span><span class="month-row-value">${fmtNum(total)}</span>`;
+    row.onclick = () => { state.schritteDetailMonth = `${y}-${pad2(m)}`; navigate('schritte-day'); };
+    listEl.appendChild(row);
+  }
+}
+
+function renderSchritteDayDetail() {
+  const [year, month] = state.schritteDetailMonth.split('-').map(Number);
+  document.getElementById('schritte-day-header-title').textContent = `${MONTHS_DE[month-1]} ${year}`;
+  const listEl = document.getElementById('schritte-day-list');
+  listEl.innerHTML = '';
+  const days = daysInMonth(year, month);
+  let hasAny = false;
+  for (let d = 1; d <= days; d++) {
+    const ds = dateStr(year, month, d);
+    const val = DATA.steps[ds];
+    if (val === undefined) continue;
+    hasAny = true;
+    const dow = new Date(year, month-1, d).getDay();
+    const row = document.createElement('div');
+    row.className = 'day-row';
+    row.innerHTML = `<div><div class="day-row-date">${d}. ${MONTHS_DE[month-1]}</div><div class="day-row-sub">${DAYS_FULL[dow]}</div></div><div class="day-row-value">${fmtNum(val)}</div>`;
+    row.onclick = () => openSchritteModal(ds, null);
+    listEl.appendChild(row);
+  }
+  if (!hasAny) listEl.innerHTML = '<div class="empty-state">Keine Einträge</div>';
+}
+
+// ===== STUDIO VIEW =====
+function setStudioTab(tab) {
+  state.studioTab = tab;
+  document.querySelectorAll('#studio-tabs .segment-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  renderStudio();
+}
+
+function navigateStudioYear(dir) {
+  state.studioYear += dir;
+  renderStudio();
+}
+
+function renderStudio() {
+  const yr = state.studioYear;
+  const tab = state.studioTab;
+
+  document.getElementById('studio-date-label').textContent = `Jan. ${yr} – Dez. ${yr}`;
+
+  if (tab === '1J') buildStudioChart1J();
+  else if (tab === '7Ta') buildStudioChart7Ta();
+  else if (tab === '4Wo') buildStudioChart4Wo();
+
+  // Stats
+  let totalSec = 0, activeDays = 0;
+  for (let m = 1; m <= 12; m++) {
+    const days = daysInMonth(yr, m);
+    for (let d = 1; d <= days; d++) {
+      const sessions = DATA.gym[dateStr(yr, m, d)] || [];
+      if (sessions.length) activeDays++;
+      sessions.forEach(s => totalSec += parseDuration(s.duration));
+    }
+  }
+  const monthsWithData = Array.from({length:12}, (_,i) => i+1).filter(m => getMonthGymTotal(yr, m) > 0).length;
+  const weeklyAvg = activeDays > 0 ? totalSec / (activeDays / 7) : 0; // rough
+  // Better: totalSec / (days_in_year / 7)
+  const totalDaysInYear = 365;
+  const weeklyAvgReal = totalSec / (totalDaysInYear / 7);
+  const monthlyAvg = monthsWithData > 0 ? totalSec / monthsWithData : 0;
+
+  document.getElementById('stat-gesamt-zeit').textContent = fmtSec(totalSec);
+  document.getElementById('stat-wochen-avg').textContent = fmtSec(Math.round(weeklyAvgReal));
+  document.getElementById('stat-studio-monats-avg').textContent = fmtSec(Math.round(monthlyAvg));
+
+  // Monthly list
+  const listEl = document.getElementById('studio-month-list');
+  listEl.innerHTML = '';
+  for (let m = 12; m >= 1; m--) {
+    const monthTotal = getMonthGymTotal(yr, m);
+    if (monthTotal === 0) continue;
+    const row = document.createElement('div');
+    row.className = 'month-row';
+    row.innerHTML = `<span class="month-row-name">${MONTHS_DE[m-1]} ${yr}</span><span class="month-row-value">${fmtSec(monthTotal)}</span>`;
+    row.onclick = () => { state.studioDetailMonth = `${yr}-${pad2(m)}`; navigate('studio-day'); };
+    listEl.appendChild(row);
+  }
+}
+
+function renderStudioDayDetail() {
+  const [year, month] = state.studioDetailMonth.split('-').map(Number);
+  document.getElementById('studio-day-header-title').textContent = `${MONTHS_DE[month-1]} ${year}`;
+  const listEl = document.getElementById('studio-session-list');
+  listEl.innerHTML = '';
+  const days = daysInMonth(year, month);
+  let hasAny = false;
+  for (let d = 1; d <= days; d++) {
+    const ds = dateStr(year, month, d);
+    const sessions = DATA.gym[ds] || [];
+    if (!sessions.length) continue;
+    sessions.forEach(session => {
+      hasAny = true;
+      const dow = new Date(year, month-1, d).getDay();
+      const row = document.createElement('div');
+      row.className = 'day-row';
+      row.innerHTML = `<div><div class="day-row-date">${d}. ${MONTHS_DE[month-1]}</div><div class="day-row-sub">${DAYS_FULL[dow]}</div></div><div class="day-row-value">${session.duration}</div>`;
+      row.onclick = () => openStudioModal(ds, session.id, null);
+      listEl.appendChild(row);
+    });
+  }
+  if (!hasAny) listEl.innerHTML = '<div class="empty-state">Keine Einträge</div>';
+}
+
+// ===== MODALS — SCHRITTE =====
+function openSchritteModal(dateKey, defaultMonth) {
+  state.schritteModalEditDate = dateKey;
+  const isEdit = !!dateKey;
+  document.getElementById('schritte-modal-title').textContent = isEdit ? 'Schritte bearbeiten' : 'Schritte eintragen';
+  const dateInput = document.getElementById('schritte-modal-date');
+  if (isEdit) {
+    dateInput.value = dateKey;
+    document.getElementById('schritte-modal-steps').value = DATA.steps[dateKey] || '';
+  } else {
+    if (defaultMonth) {
+      const [y, m] = defaultMonth.split('-').map(Number);
+      dateInput.value = dateStr(y, m, 1);
+    } else {
+      dateInput.value = todayStr();
+    }
+    document.getElementById('schritte-modal-steps').value = '';
+  }
+  document.getElementById('schritte-modal-delete').style.display = isEdit ? '' : 'none';
+  document.getElementById('schritte-modal-overlay').classList.add('open');
+}
+
+function closeSchritteModal(e) {
+  if (e && e.target !== document.getElementById('schritte-modal-overlay')) return;
+  document.getElementById('schritte-modal-overlay').classList.remove('open');
+}
+
+function saveSchritteEntry() {
+  const dateKey = document.getElementById('schritte-modal-date').value;
+  const steps = parseInt(document.getElementById('schritte-modal-steps').value, 10);
+  if (!dateKey || isNaN(steps) || steps < 0) { alert('Bitte Datum und gültige Schrittanzahl eingeben.'); return; }
+  DATA.steps[dateKey] = steps;
+  saveData(DATA);
+  document.getElementById('schritte-modal-overlay').classList.remove('open');
+  // Re-render current view
+  const activeView = document.querySelector('.view.active').id;
+  if (activeView === 'view-schritte') renderSchritte();
+  else if (activeView === 'view-schritte-day') { renderSchritteDayDetail(); }
+}
+
+function deleteSchritteEntry() {
+  const dateKey = state.schritteModalEditDate;
+  if (!dateKey) return;
+  if (!confirm('Eintrag wirklich löschen?')) return;
+  delete DATA.steps[dateKey];
+  saveData(DATA);
+  document.getElementById('schritte-modal-overlay').classList.remove('open');
+  const activeView = document.querySelector('.view.active').id;
+  if (activeView === 'view-schritte') renderSchritte();
+  else if (activeView === 'view-schritte-day') renderSchritteDayDetail();
+}
+
+// ===== MODALS — STUDIO =====
+function openStudioModal(dateKey, sessionId, defaultMonth) {
+  state.studioModalEditDate = dateKey;
+  state.studioModalEditSessionId = sessionId;
+  const isEdit = !!(dateKey && sessionId);
+  document.getElementById('studio-modal-title').textContent = isEdit ? 'Session bearbeiten' : 'Session eintragen';
+  const dateInput = document.getElementById('studio-modal-date');
+  if (isEdit) {
+    dateInput.value = dateKey;
+    const session = (DATA.gym[dateKey] || []).find(s => s.id === sessionId);
+    if (session) {
+      const sec = parseDuration(session.duration);
+      document.getElementById('studio-modal-h').value = Math.floor(sec / 3600);
+      document.getElementById('studio-modal-m').value = Math.floor((sec % 3600) / 60);
+      document.getElementById('studio-modal-s').value = sec % 60;
+    }
+  } else {
+    if (defaultMonth) {
+      const [y, m] = defaultMonth.split('-').map(Number);
+      dateInput.value = dateStr(y, m, 1);
+    } else {
+      dateInput.value = todayStr();
+    }
+    document.getElementById('studio-modal-h').value = '';
+    document.getElementById('studio-modal-m').value = '';
+    document.getElementById('studio-modal-s').value = '';
+  }
+  document.getElementById('studio-modal-delete').style.display = isEdit ? '' : 'none';
+  document.getElementById('studio-modal-overlay').classList.add('open');
+}
+
+function closeStudioModal(e) {
+  if (e && e.target !== document.getElementById('studio-modal-overlay')) return;
+  document.getElementById('studio-modal-overlay').classList.remove('open');
+}
+
+function saveStudioEntry() {
+  const dateKey = document.getElementById('studio-modal-date').value;
+  const h = parseInt(document.getElementById('studio-modal-h').value, 10) || 0;
+  const m = parseInt(document.getElementById('studio-modal-m').value, 10) || 0;
+  const s = parseInt(document.getElementById('studio-modal-s').value, 10) || 0;
+  const totalSec = h * 3600 + m * 60 + s;
+  if (!dateKey || totalSec === 0) { alert('Bitte Datum und Dauer eingeben.'); return; }
+  const duration = fmtSec(totalSec);
+  if (!DATA.gym[dateKey]) DATA.gym[dateKey] = [];
+  if (state.studioModalEditSessionId) {
+    const idx = DATA.gym[dateKey].findIndex(s => s.id === state.studioModalEditSessionId);
+    if (idx >= 0) DATA.gym[dateKey][idx].duration = duration;
+    else DATA.gym[dateKey].push({ id: simpleUUID(), duration });
+  } else {
+    DATA.gym[dateKey].push({ id: simpleUUID(), duration });
+  }
+  saveData(DATA);
+  document.getElementById('studio-modal-overlay').classList.remove('open');
+  const activeView = document.querySelector('.view.active').id;
+  if (activeView === 'view-studio') renderStudio();
+  else if (activeView === 'view-studio-day') renderStudioDayDetail();
+}
+
+function deleteStudioEntry() {
+  const dateKey = state.studioModalEditDate;
+  const sessionId = state.studioModalEditSessionId;
+  if (!dateKey || !sessionId) return;
+  if (!confirm('Session wirklich löschen?')) return;
+  if (DATA.gym[dateKey]) {
+    DATA.gym[dateKey] = DATA.gym[dateKey].filter(s => s.id !== sessionId);
+    if (!DATA.gym[dateKey].length) delete DATA.gym[dateKey];
+  }
+  saveData(DATA);
+  document.getElementById('studio-modal-overlay').classList.remove('open');
+  const activeView = document.querySelector('.view.active').id;
+  if (activeView === 'view-studio') renderStudio();
+  else if (activeView === 'view-studio-day') renderStudioDayDetail();
+}
+
+// ===== HASH ROUTING =====
+function handleHash() {
+  const hash = window.location.hash.replace('#', '') || 'home';
+  if (hash === 'schritte') navigate('schritte');
+  else if (hash === 'studio') navigate('studio');
+  else navigate('home');
+}
+
+// Override navigate to update hash
+const _navigate = navigate;
+// (already defined above, hash update handled inline)
+
+// ===== INIT =====
+renderHome();
+// Set current time in status bars
+function updateStatusTime() {
+  const now = new Date();
+  const t = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+  document.querySelectorAll('.status-time').forEach(el => el.textContent = t);
+}
+updateStatusTime();
+setInterval(updateStatusTime, 10000);
+</script>
+</body>
+</html>
