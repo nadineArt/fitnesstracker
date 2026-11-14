@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Fitness Tracker</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:#111;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif}
+html,body{height:100%;background:#111;font-family:'Roboto','Helvetica Neue',Arial,sans-serif}
 body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh}
 #app{width:100%;max-width:390px;min-height:100vh;background:#000;position:relative;overflow:hidden;display:flex;flex-direction:column}
 .view{display:none;flex-direction:column;flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
@@ -41,7 +42,7 @@ body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh
 .date-nav{display:flex;align-items:center;justify-content:center;padding:8px 16px 4px;flex-shrink:0;gap:8px}
 .date-nav-btn{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%}
 .date-nav-btn:active{background:#2C2C2E}
-.date-nav-btn:disabled{opacity:0.25;pointer-events:none;cursor:default}
+.date-nav-btn:disabled{visibility:hidden;pointer-events:none}
 .date-nav-label{font-size:15px;font-weight:500;color:#fff;flex:1;text-align:center}
 
 /* Zeit/Kalorien sub-tabs */
@@ -54,28 +55,36 @@ body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh
 .chart-section h3{font-size:17px;font-weight:700;color:#fff;margin-bottom:12px}
 .chart-container{height:220px;position:relative}
 
-/* Stats grid */
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid #3A3A3C;flex-shrink:0}
-.stat-item{padding:14px 16px 12px}
-.stat-value{font-size:28px;font-weight:700;color:#fff;line-height:1.1}
+/* Stats grid — two rows, each row has only a top border, NO vertical dividers */
+.stats-grid{flex-shrink:0}
+.stats-row{display:flex;border-top:1px solid #3A3A3C}
+.stat-item{flex:1;padding:14px 16px 12px;min-width:0}
+.stat-value{font-size:28px;font-weight:700;color:#fff;line-height:1.1;font-family:'Roboto Condensed','Roboto',sans-serif}
 .stat-value.medium{font-size:22px}
-.stat-label{font-size:12px;color:#8E8E93;margin-top:3px}
-.stats-grid .stat-item:nth-child(odd){border-right:1px solid #3A3A3C}
-.stats-grid .stat-item:nth-child(1),.stats-grid .stat-item:nth-child(2){border-bottom:1px solid #3A3A3C}
+.stat-label{font-size:12px;color:#8E8E93;margin-top:4px;font-weight:400}
 
-/* Records row */
-.records-row{background:#1C1C1E;border-radius:12px;margin:8px 16px 0;padding:14px 16px;flex-shrink:0;border:none}
-.records-row button{background:none;border:none;color:#fff;font-size:15px;font-weight:500;cursor:pointer;width:100%;text-align:left;padding:0;display:flex;justify-content:space-between;align-items:center}
-.records-row button::after{content:'›';font-size:20px;color:#8E8E93}
+/* Records row — full width separator style like Garmin */
+.records-row{padding:0;flex-shrink:0;background:#1C1C1E;border-top:1px solid #2C2C2E;border-bottom:1px solid #2C2C2E;margin-top:16px}
+.records-row button{background:none;border:none;color:#fff;font-size:16px;font-weight:400;cursor:pointer;width:100%;text-align:left;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}
+.records-row button::after{content:'›';font-size:18px;color:#8E8E93}
 
-/* Monthly list */
-.section-header{padding:16px 16px 4px;background:#000;flex-shrink:0}
+/* Section header (Studio only) */
+.section-header{padding:12px 16px 4px;background:#000;flex-shrink:0}
 .section-label{font-size:11px;font-weight:400;color:#8E8E93;letter-spacing:0.5px;text-transform:uppercase}
-.month-list{flex:1;padding-bottom:16px}
-.month-row{display:flex;justify-content:space-between;align-items:center;background:#1C1C1E;border-radius:12px;margin:8px 16px 0;padding:14px 16px;cursor:pointer;border-bottom:none}
-.month-row:active{background:#2C2C2E}
-.month-row-name{font-size:16px;color:#fff}
-.month-row-value{font-size:16px;color:#fff;font-weight:500}
+
+/* Schritte monthly list — plain rows, no card boxes */
+.month-list-plain{flex:1;background:#1C1C1E}
+.month-row-plain{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-top:1px solid #2C2C2E;cursor:pointer}
+.month-row-plain:active{background:#2C2C2E}
+.month-row-plain .month-row-name{font-size:16px;color:#fff;font-weight:400}
+.month-row-plain .month-row-value{font-size:16px;color:#fff;font-weight:700}
+
+/* Studio monthly list — dark rounded cards with generous padding */
+.month-list{flex:1;padding:0 0 24px}
+.month-row{display:flex;justify-content:space-between;align-items:center;background:#2C2C2E;border-radius:10px;margin:10px 16px 0;padding:20px 16px;cursor:pointer}
+.month-row:active{background:#3A3A3C}
+.month-row-name{font-size:16px;color:#fff;font-weight:400}
+.month-row-value{font-size:16px;color:#fff;font-weight:400}
 
 /* Day/session list */
 .day-list{flex:1}
@@ -131,7 +140,7 @@ body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh
 .export-panel h3{font-size:15px;font-weight:600;color:#fff;margin-bottom:12px}
 .export-btn{width:100%;background:#2C2C2E;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:500;padding:12px;cursor:pointer;margin-bottom:8px;text-align:center}
 .export-btn:active{background:#3A3A3C}
-.export-btn.green{background:#1C3A1C;color:#30D158}
+.export-btn.green{background:#1C3A1C;color:#15A544}
 .export-btn.blue{background:#1C2A3A;color:#0A84FF}
 
 /* Scrollable content area */
@@ -240,7 +249,7 @@ body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh
       <!-- 1T single day -->
       <div id="schritte-1t-section" style="display:none;padding:16px">
         <div style="text-align:center;padding:24px 0">
-          <div id="schritte-1t-value" style="font-size:48px;font-weight:700;color:#30D158">–</div>
+          <div id="schritte-1t-value" style="font-size:48px;font-weight:700;color:#15A544">–</div>
           <div style="font-size:14px;color:#8E8E93;margin-top:4px">Schritte</div>
           <div id="schritte-1t-date" style="font-size:13px;color:#8E8E93;margin-top:8px"></div>
         </div>
@@ -248,21 +257,25 @@ body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh
 
       <!-- Stats -->
       <div class="stats-grid" id="schritte-stats">
-        <div class="stat-item">
-          <div class="stat-value medium" id="stat-gesamt-schritte">–</div>
-          <div class="stat-label">Gesamtschritte</div>
+        <div class="stats-row">
+          <div class="stat-item">
+            <div class="stat-value" id="stat-gesamt-schritte">–</div>
+            <div class="stat-label">Gesamtschritte</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value medium" id="stat-strecke">–</div>
+            <div class="stat-label">Gesamtstrecke</div>
+          </div>
         </div>
-        <div class="stat-item">
-          <div class="stat-value medium" id="stat-strecke">–</div>
-          <div class="stat-label">Gesamtstrecke</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value medium" id="stat-tages-avg">–</div>
-          <div class="stat-label">Tagesdurchschnitt</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value medium" id="stat-monats-avg">–</div>
-          <div class="stat-label">Monats-Ø</div>
+        <div class="stats-row">
+          <div class="stat-item">
+            <div class="stat-value" id="stat-tages-avg">–</div>
+            <div class="stat-label">Tagesdurchschnitt</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="stat-monats-avg">–</div>
+            <div class="stat-label">Monats-Ø</div>
+          </div>
         </div>
       </div>
 
@@ -270,10 +283,7 @@ body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh
         <button>Persönliche Rekorde anzeigen</button>
       </div>
 
-      <div class="section-header">
-        <div class="section-label" id="schritte-list-label">AKTIVITÄTEN VOM TYP 'SCHRITTE'</div>
-      </div>
-      <div class="month-list" id="schritte-month-list"></div>
+      <div class="month-list-plain" id="schritte-month-list"></div>
     </div>
 
     <button class="fab" onclick="openSchritteModal(null, null)">+</button>
@@ -338,19 +348,23 @@ body{display:flex;justify-content:center;align-items:flex-start;min-height:100vh
       </div>
 
       <div class="stats-grid" id="studio-stats">
-        <div class="stat-item">
-          <div class="stat-value medium" id="stat-gesamt-zeit">–</div>
-          <div class="stat-label">Gesamtzeit</div>
+        <div class="stats-row">
+          <div class="stat-item">
+            <div class="stat-value" id="stat-gesamt-zeit">–</div>
+            <div class="stat-label">Gesamtzeit</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value medium" id="stat-wochen-avg">–</div>
+            <div class="stat-label">Wochendurchschnitt</div>
+          </div>
         </div>
-        <div class="stat-item">
-          <div class="stat-value medium" id="stat-wochen-avg">–</div>
-          <div class="stat-label">Wochendurchschnitt</div>
+        <div class="stats-row">
+          <div class="stat-item">
+            <div class="stat-value" id="stat-studio-monats-avg">–</div>
+            <div class="stat-label">Monats-Ø</div>
+          </div>
+          <div class="stat-item"></div>
         </div>
-        <div class="stat-item" style="border-bottom:none">
-          <div class="stat-value medium" id="stat-studio-monats-avg">–</div>
-          <div class="stat-label">Monats-Ø</div>
-        </div>
-        <div class="stat-item" style="border-bottom:none"></div>
       </div>
 
       <div class="section-header">
@@ -665,7 +679,7 @@ function buildSchritteChart1J() {
   const ctx = document.getElementById('schritte-chart').getContext('2d');
   schritteChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ data: values, backgroundColor: '#30D158', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
+    data: { labels, datasets: [{ data: values, backgroundColor: '#15A544', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
     options: {
       ...CHART_DEFAULTS,
       plugins: {
@@ -693,7 +707,7 @@ function buildSchritteChart7Ta() {
   const ctx = document.getElementById('schritte-chart').getContext('2d');
   schritteChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ data: values, backgroundColor: '#30D158', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
+    data: { labels, datasets: [{ data: values, backgroundColor: '#15A544', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
     options: { ...CHART_DEFAULTS, plugins: { ...CHART_DEFAULTS.plugins, tooltip: { callbacks: { label: ctx => fmtNum(ctx.parsed.y) + ' Schritte' } } } }
   });
 }
@@ -714,7 +728,7 @@ function buildSchritteChart4Wo() {
   const ctx = document.getElementById('schritte-chart').getContext('2d');
   schritteChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels: weeks.map(w => w.label), datasets: [{ data: weeks.map(w => w.total), backgroundColor: '#30D158', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
+    data: { labels: weeks.map(w => w.label), datasets: [{ data: weeks.map(w => w.total), backgroundColor: '#15A544', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
     options: { ...CHART_DEFAULTS }
   });
 }
@@ -738,7 +752,7 @@ function buildStudioChart1J() {
   const ctx = document.getElementById('studio-chart').getContext('2d');
   studioChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ data: values, backgroundColor: '#5B9BD5', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
+    data: { labels, datasets: [{ data: values, backgroundColor: '#1976D3', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
     options: {
       ...CHART_DEFAULTS,
       plugins: {
@@ -770,7 +784,7 @@ function buildStudioChart7Ta() {
   const ctx = document.getElementById('studio-chart').getContext('2d');
   studioChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ data: values, backgroundColor: '#5B9BD5', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
+    data: { labels, datasets: [{ data: values, backgroundColor: '#1976D3', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
     options: { ...CHART_DEFAULTS, plugins: { ...CHART_DEFAULTS.plugins, tooltip: { callbacks: { label: ctx => fmtSec(Math.round(ctx.parsed.y * 3600)) } } } }
   });
 }
@@ -792,7 +806,7 @@ function buildStudioChart4Wo() {
   const ctx = document.getElementById('studio-chart').getContext('2d');
   studioChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels: weeks.map(w => w.label), datasets: [{ data: weeks.map(w => w.total/3600), backgroundColor: '#5B9BD5', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
+    data: { labels: weeks.map(w => w.label), datasets: [{ data: weeks.map(w => w.total/3600), backgroundColor: '#1976D3', borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, borderSkipped: false }] },
     options: { ...CHART_DEFAULTS }
   });
 }
@@ -984,7 +998,7 @@ function renderSchritte() {
     const total = getMonthStepsTotal(y, m);
     if (total === 0) continue;
     const row = document.createElement('div');
-    row.className = 'month-row';
+    row.className = 'month-row-plain';
     const name = m === 12 && y === yr-1 ? `Dezember ${yr-1}` : MONTHS_DE[m-1] + (y !== yr ? ` ${y}` : '');
     row.innerHTML = `<span class="month-row-name">${name}</span><span class="month-row-value">${fmtNum(total)}</span>`;
     row.onclick = () => { state.schritteDetailMonth = `${y}-${pad2(m)}`; navigate('schritte-day'); };
